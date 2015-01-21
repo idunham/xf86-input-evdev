@@ -39,10 +39,15 @@
 
 #include <linux/version.h>
 #include <sys/stat.h>
-#include <libudev.h>
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
+
+#ifdef USE_UDEV
+#include <libudev.h>
+#elif defined(USE_SYSDEV)
+#include <libsysdev/sysdev.h>
+#endif
 
 #include <xf86.h>
 #include <xf86Xinput.h>
@@ -231,6 +236,7 @@ EvdevIsDuplicate(InputInfoPtr pInfo)
     return FALSE;
 }
 
+#ifdef USE_UDEV
 static BOOL
 EvdevDeviceIsVirtual(const char* devicenode)
 {
@@ -265,6 +271,31 @@ out:
     udev_unref(udev);
     return rc;
 }
+#elif defined(USE_SYSDEV)
+static BOOL
+EvdevDeviceIsVirtual(const char* devicenode)
+{
+    int devfd, rc = FALSE;
+    char *syspath;
+    
+    devfd = open(devicenode, O_RDONLY);
+
+    if (devfd < 0)
+        goto out;
+
+    syspath = sysdev_devfd_to_syspath(devfd);
+
+    if (syspath) {
+        if (strstr(syspath, "LNXSYSTM"))
+            rc = TRUE;
+
+	free(syspath);
+    }
+out:
+    return rc;
+}
+#endif
+
 
 #ifndef HAVE_SMOOTH_SCROLLING
 static int wheel_up_button = 4;

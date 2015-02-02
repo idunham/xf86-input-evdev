@@ -39,6 +39,7 @@
 
 #include <linux/version.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -275,15 +276,15 @@ out:
 static BOOL
 EvdevDeviceIsVirtual(const char* devicenode)
 {
-    int devfd, rc = FALSE;
+    struct stat st;
+    int rc = FALSE;
     char *syspath;
     
-    devfd = open(devicenode, O_RDONLY);
-
-    if (devfd < 0)
+    if (stat(devicenode, &st) == -1)
         goto out;
 
-    syspath = sysdev_devfd_to_syspath(devfd);
+    syspath = sysdev_getsyspath(major(st.st_rdev), minor(st.st_rdev),
+    				S_ISCHR(st.st_mode));
 
     if (syspath) {
         if (strstr(syspath, "LNXSYSTM"))
